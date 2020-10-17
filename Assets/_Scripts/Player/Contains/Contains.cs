@@ -138,7 +138,6 @@ public static class Contains
                 List = array,
                 Result = &result,
                 Target = target,
-                ItemsPerThread = array.Length / participatingThreads,
             }
             .Schedule(participatingThreads, 1)
             .Complete();
@@ -175,7 +174,6 @@ public static class Contains
                 List = array,
                 Result = &result,
                 Target = target,
-                ItemsPerThread = array.Length / participatingThreads,
             }
             .Schedule(participatingThreads, 1)
             .Complete();
@@ -317,9 +315,6 @@ public static class Contains
         public NativeArray<int> End;
 
         [ReadOnly]
-        public int ItemsPerThread;
-
-        [ReadOnly]
         public int Target;
 
         [NativeDisableUnsafePtrRestriction]
@@ -366,9 +361,6 @@ public static class Contains
 
         [ReadOnly]
         public NativeArray<int> End;
-
-        [ReadOnly]
-        public int ItemsPerThread;
 
         [ReadOnly]
         public int Target;
