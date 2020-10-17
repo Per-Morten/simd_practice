@@ -390,12 +390,12 @@ public static class Contains
             {
                 var r32_0 = mm256_cmpeq_epi32(*(v256*)(ptr + i + 0), target);
                 var r32_1 = mm256_cmpeq_epi32(*(v256*)(ptr + i + 8), target);
-                var r16_0 = mm256_packus_epi32(r32_0, r32_1);
+                var r16_0 = mm256_packs_epi32(r32_0, r32_1);
                 var r32_2 = mm256_cmpeq_epi32(*(v256*)(ptr + i + 16), target);
                 var r32_3 = mm256_cmpeq_epi32(*(v256*)(ptr + i + 24), target);
-                var r16_1 = mm256_packus_epi32(r32_2, r32_3);
-                var r8_0 = mm256_packus_epi16(r16_0, r16_1);
-                if (mm256_movemask_ps(r8_0) != 0)
+                var r16_1 = mm256_packs_epi32(r32_2, r32_3);
+                var r8_0 = mm256_packs_epi16(r16_0, r16_1);
+                if (mm256_movemask_epi8(r8_0) != 0)
                 {
                     Interlocked.Exchange(ref UnsafeUtility.AsRef<long>(Result), 1);
                     return;

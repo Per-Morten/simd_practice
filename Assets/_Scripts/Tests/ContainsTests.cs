@@ -93,22 +93,21 @@ namespace ContainsTests
                 [OneTimeSetUp]
                 virtual public void Setup()
                 {
-                    list = new List<int>()
-                    {
-                        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
-                    };
+                    list = new List<int>();
+                    for (int i = 0; i < 1000; i++)
+                        list.Add(i);
                 }
 
                 [Test]
                 public void ReturnsTrueOnFoundLast()
                 {
-                    Assert.IsTrue(Func(list, 20));
+                    Assert.IsTrue(Func(list, list.Count - 1));
                 }
 
                 [Test]
                 public void ReturnFalseOnNotFound()
                 {
-                    Assert.IsFalse(Func(list, 50));
+                    Assert.IsFalse(Func(list, list.Count + 1));
                 }
 
                 [Test]
@@ -126,13 +125,20 @@ namespace ContainsTests
                 [Test]
                 public void ReturnsTrueOnFoundNextToLast()
                 {
-                    Assert.IsTrue(Func(list, 19));
+                    Assert.IsTrue(Func(list, list.Count - 2));
                 }
 
                 [Test]
                 public void ReturnsTrueOnFoundFirstStraggler()
                 {
-                    Assert.IsTrue(Func(list, 17));
+                    Assert.IsTrue(Func(list, list.Count - 31));
+                }
+
+                [Test]
+                public void ReturnsOnAllFrom0ToListCount()
+                {
+                    for (int i = 0; i < list.Count; i++)
+                        Assert.IsTrue(Func(list, list[i]), $"Failed On: {i}");
                 }
             }
 
