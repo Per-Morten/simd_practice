@@ -572,7 +572,7 @@ PlayerSettings:
   webGLThreadsSupport: 0
   webGLDecompressionFallback: 0
   scriptingDefineSymbols:
-    1: INCLUDE_CORRECTNESS_TESTS;INCLUDE_PERFORMANCE_TESTS;INCLUDE_SLOW_PERFORMANCE_TESTS
+    1: INCLUDE_CORRECTNESS_TESTS;INCLUDE_PERFORMANCE_TESTS;TEN_MILLION_LIST
   platformArchitecture: {}
   scriptingBackend:
     Standalone: 0
