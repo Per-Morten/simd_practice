@@ -35,6 +35,22 @@ public static class TestUtility
         return list;
     }
 
+    public static List<int> CreateLargeAlternating01List()
+    {
+#if TEN_MILLION_LIST
+        var list = new List<int>(10000000);
+#elif ONE_MILLION_LIST
+        var list = new List<int>(1000000);
+#elif HUNDRED_THOUSAND_LIST
+        var list = new List<int>(100000);
+#else
+        var list = new List<int>(10000);
+#endif
+        for (int i = 0; i < list.Capacity; i++)
+            list.Add(i & 1);
+        return list;
+    }
+
     public static void RandomShuffle(Action[] actions)
     {
         var random = new System.Random(DateTime.Now.Millisecond);
