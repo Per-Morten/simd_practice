@@ -72,7 +72,7 @@ namespace RGBToRGBAFloat4Tests
                     //() => {TestUtility.Time($"ForLoopFilter ({list.Count / 3})", () => {RGBToRGBAFloat4.ForLoop(list); }); },
                     () => {TestUtility.Time($"Burst ({list.Count / 3})", () => {RGBToRGBAFloat4.BurstForLoop(list); }); },
                     () => {TestUtility.Time($"V128 ({list.Count / 3})", () => {RGBToRGBAFloat4.V128ForLoop(list); }); },
-                    //() => {TestUtility.Time($"V256 ({list.Count / 3})", () => {RGBToRGBAFloat4.V256ForLoop(list); }); },
+                    () => {TestUtility.Time($"V256 ({list.Count / 3})", () => {RGBToRGBAFloat4.V256ForLoop(list); }); },
                 };
 
 #if RANDOM_SHUFFLE_TESTS
@@ -106,7 +106,7 @@ namespace RGBToRGBAFloat4Tests
 
                 private unsafe void RunTest(Color color)
                 {
-                    var rgb = ConvertColor(color, 9);
+                    var rgb = ConvertColor(color, 23);
                     var colors = Func(rgb);
                     var target = *(float4*)&color;
                     for (int i = 0; i < colors.Count; i++)
@@ -174,6 +174,23 @@ namespace RGBToRGBAFloat4Tests
                     for (int i = 0; i < colors.Count; i++)
                     {
                         var targetColor = colors[i];
+                        var target = *(float4*)&targetColor;
+                        var res = result[i];
+                        Assert.IsTrue(math.all(aprox(res, target)));
+                    }
+                }
+
+                [Test]
+                public unsafe void ByteRecognizablePattern()
+                {
+                    var pattern = new List<u8>();
+                    for (int i = 0; i < 17 * 3; i++)
+                        pattern.Add((u8)(i));
+
+                    var result = Func(pattern);
+                    for (int i = 0; i < result.Count; i++)
+                    {
+                        var targetColor = (Color)(new Color32(pattern[i * 3 + 0], pattern[i * 3 + 1], pattern[i * 3 + 2], 0xFF));
                         var target = *(float4*)&targetColor;
                         var res = result[i];
                         Assert.IsTrue(math.all(aprox(res, target)));
