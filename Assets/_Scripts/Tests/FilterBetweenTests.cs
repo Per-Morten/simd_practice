@@ -36,9 +36,9 @@ namespace FilterBetweenTests
             {
                 var timings = new Action[]
                 {
-                    () => {TestUtility.Time($"IEnumerableFilter ({list.Count})", () => {FilterBetween.IEnumerableFilter(list, greaterThan, lessThan); });},
-                    () => {TestUtility.Time($"ForLoopFilter ({list.Count})", () => {FilterBetween.ForLoopFilter(list, greaterThan, lessThan); }); },
-                    () => {TestUtility.Time($"BurstFilter ({list.Count})", () => {FilterBetween.BurstFilter(list, greaterThan, lessThan); }); },
+                    //() => {TestUtility.Time($"IEnumerableFilter ({list.Count})", () => {FilterBetween.IEnumerableFilter(list, greaterThan, lessThan); });},
+                    //() => {TestUtility.Time($"ForLoopFilter ({list.Count})", () => {FilterBetween.ForLoopFilter(list, greaterThan, lessThan); }); },
+                    //() => {TestUtility.Time($"BurstFilter ({list.Count})", () => {FilterBetween.BurstFilter(list, greaterThan, lessThan); }); },
                     () => {TestUtility.Time($"V128Filter ({list.Count})", () => {FilterBetween.V128Filter(list, greaterThan, lessThan); }); },
                     () => {TestUtility.Time($"V256Filter ({list.Count})", () => {FilterBetween.V256Filter(list, greaterThan, lessThan); }); },
                 };
