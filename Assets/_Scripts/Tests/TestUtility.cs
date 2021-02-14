@@ -12,10 +12,10 @@ public static class TestUtility
         {
             action();
         })
-        .WarmupCount(100)
-        .MeasurementCount(100)
+        .WarmupCount(100) // Old 100
+        .MeasurementCount(100) // Old 100
         .SampleGroup(name)
-        .IterationsPerMeasurement(25)
+        .IterationsPerMeasurement(25) // Old 25
         .Run();
     }
 

@@ -77,7 +77,7 @@ public static class RGBToRGBAFloat4
 
         // Want to output 5 values
 
-        var _1f = set1_ps(1.0f); // 0x3f800000 == 1.0f
+        var _1f = set1_ps(1.0f);
         var _255f = set1_ps(255.0f);
         var alignedCount = (count / 5) * 5;
         int i = 0;
@@ -159,18 +159,19 @@ public static class RGBToRGBAFloat4
         // v3: GHIJ KLMN ---- ---- ---- ---- ---- ---- Can be achieved with shifts, bring I (R) to front of Hi128 bytes << 2
         // v4: OPQR STUV ---- ---- ---- ---- ---- ---- Can be achieved with shifts, bring O (R) to front of Hi128 bytes << 8
 
-        var alphaComponentShuffle = mm256_setr_m128(setr_epi8(0, 1, 2, -1, 3, 4, 5, -1, -1, -1, -1, -1, -1, -1, -1, -1), setr_epi8(0, 1, 2, -1, 3, 4, 5, -1, -1, -1, -1, -1, -1, -1, -1, -1));
+        var alphaComponentShuffle = mm256_setr_epi8(0, 1, 2, 0xFF, 3, 4, 5, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0, 1, 2, 0xFF, 3, 4, 5, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF);
         var _255f = mm256_set1_ps(255.0f);
         var _0001f0001f = mm256_setr_ps(0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f);
         var alignedCount = (count / 10) * 10;
         int i = 0;
+
         for (; i < alignedCount; i += 10)
         {
             var all = mm256_loadu_si256(&src[i * 3]);
 
             // Shift 2x RGB values to front of register
             var v0u8 = mm256_srli_si256(all, 0);
-            var v1u8 = mm256_srli_si256(all, 6);
+            var v1u8 = mm256_srli_si256(all, 6); 
             var v2u8 = mm256_permutevar8x32_ps(all, mm256_setr_epi32(3, 4, -1, -1, -1, -1, -1, -1));
             var v3u8 = mm256_srli_si256(all, 2);
             var v4u8 = mm256_srli_si256(all, 8);

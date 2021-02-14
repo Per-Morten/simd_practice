@@ -11,7 +11,6 @@ using Unity.Mathematics;
 
 using u32 = System.UInt32;
 using u8 = System.Byte;
-using UnityEngine.Animations;
 
 namespace RGBToRGBAFloat4Tests
 {
