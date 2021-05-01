@@ -81,21 +81,22 @@ public static class FilterEquals
     [BurstCompile]
     public static unsafe void V128Filter(int* src, int srcCount, int target, int* dst, out int dstCount)
     {
-        var dstPtr = dst;
         var alignedCount = srcCount & ~3;
         int i = 0;
+        var dstPtr = dst;
         for (; i < alignedCount; i += 4)
         {
-            var val = loadu_ps(&src[i]);
+            var val = loadu_si128(src + i);
             var cmp = cmpeq_epi32(val, set1_epi32(target));
             var packed = SIMDHelpers.LeftPack4PS(cmp, val);
-            storeu_ps(dstPtr, packed);
-            dstPtr += popcnt_u32((uint)movemask_ps(cmp));
+            storeu_si128(dstPtr, packed);
+            var mask = movemask_ps(cmp);
+            dstPtr += popcnt_u32((uint)mask);
         }
 
         for (; i < srcCount; i++)
             if (src[i] == target)
-                *dstPtr++ = src[i];
+                *(dstPtr++) = src[i];
 
         dstCount = (int)(dstPtr - dst);
     }
@@ -113,21 +114,22 @@ public static class FilterEquals
     [BurstCompile]
     public static unsafe void V256Filter(int* src, int srcCount, int target, int* dst, out int dstCount)
     {
-        var dstPtr = dst;
         var alignedCount = srcCount & ~7;
+        var dstPtr = dst;
         int i = 0;
         for (; i < alignedCount; i += 8)
         {
-            var val = mm256_loadu_ps(&src[i]);
+            var val = mm256_loadu_si256(src + i);
             var cmp = mm256_cmpeq_epi32(val, mm256_set1_epi32(target));
             var packed = SIMDHelpers.LeftPack8PS(cmp, val);
-            mm256_storeu_ps(dstPtr, packed);
-            dstPtr += popcnt_u32((uint)mm256_movemask_ps(cmp));
+            mm256_storeu_si256(dstPtr, packed);
+            var mask = mm256_movemask_ps(cmp);
+            dstPtr += popcnt_u32((uint)mask);
         }
 
         for (; i < srcCount; i++)
             if (src[i] == target)
-                *dstPtr++ = src[i];
+                *(dstPtr++) = src[i];
 
         dstCount = (int)(dstPtr - dst);
     }

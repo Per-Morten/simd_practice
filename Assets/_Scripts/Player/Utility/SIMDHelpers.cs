@@ -37,13 +37,13 @@ public static class SIMDHelpers
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static v256 LeftPack8PS(v256 mask, v256 value)
     {
-        var v128Mask = mm256_movemask_ps(mask);
-        var hiMask = (v128Mask >> 4) & 0xF;
-        var loMask = (v128Mask >> 0) & 0xF;
+        var v256Mask = mm256_movemask_ps(mask);
+        var hiMask = (v256Mask >> 4) & 0xF; // Isolate movemask for the high 128 bits
+        var loMask = (v256Mask >> 0) & 0xF; // Isolate movemask for the lo 128 bits
         var hiCount = popcnt_u32((uint)hiMask);
         var loCount = popcnt_u32((uint)loMask);
         var perm = mm256_set_m128(LeftPack4PSLUT[hiMask], LeftPack4PSLUT[loMask]);
-        value = mm256_permutevar_ps(value, perm); // LeftPack4PS internal 128-bit lanes of value.
+        value = mm256_permutevar_ps(value, perm); // "LeftPack4PS" internal 128-bit lanes of value.
         return mm256_permutevar8x32_ps(value, LeftPack8PSLUT[(hiCount * 5) + loCount]);
     }
 
@@ -53,7 +53,8 @@ public static class SIMDHelpers
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static v128 AbsPS(v128 v)
     {
-        // IEEE-754 floats only have a sign bit, and don't do 2's complement logic. So for Abs on floats we can just zero the sign bit.
+        // IEEE-754 floats only have a sign bit, and don't do 2's complement logic. 
+        // So for Abs on floats we can just zero the sign bit.
         var ZeroSignBitMask = set1_epi32(~(1 << 31)); // All bits set except the sign bit.
         return and_ps(v, ZeroSignBitMask);
     }

@@ -8,6 +8,31 @@ public static class TestUtility
 {
     public static void Time(string name, Action action)
     {
+#if PRECISE_TIMINGS
+        Measure.Method(() =>
+        {
+            action();
+        })
+        .WarmupCount(100) // Old 100
+        .MeasurementCount(100) // Old 100
+        .SampleGroup(name)
+        .IterationsPerMeasurement(25) // Old 25
+        .Run();
+#else
+        Measure.Method(() =>
+        {
+            action();
+        })
+        .WarmupCount(2)
+        .MeasurementCount(5)
+        .SampleGroup(name)
+        .IterationsPerMeasurement(2)
+        .Run();
+#endif
+    }
+
+    public static void TimeBasic(string name, Action action)
+    {
         Measure.Method(() =>
         {
             action();

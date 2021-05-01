@@ -67,7 +67,7 @@ namespace RGBToRGBAU32Tests
             {
                 var timings = new Action[]
                 {
-                    () => {TestUtility.Time($"ForLoopFilter ({list.Count / 3})", () => {RGBToRGBAU32.ForLoop(list); }); },
+                    //() => {TestUtility.Time($"ForLoopFilter ({list.Count / 3})", () => {RGBToRGBAU32.ForLoop(list); }); },
                     () => {TestUtility.Time($"Burst ({list.Count / 3})", () => {RGBToRGBAU32.BurstForLoop(list); }); },
                     () => {TestUtility.Time($"V128 ({list.Count / 3})", () => {RGBToRGBAU32.V128ForLoop(list); }); },
                     () => {TestUtility.Time($"V256 ({list.Count / 3})", () => {RGBToRGBAU32.V256ForLoop(list); }); },

@@ -84,15 +84,11 @@ namespace FilterEqualsTests
         {
             public abstract class GenericTests
             {
-                //protected List<int> list;
                 protected Func<List<int>, int, List<int>> Func;
 
                 [OneTimeSetUp]
                 virtual public void Setup()
                 {
-                //    list = new List<int>();
-                //    for (int i = 0; i < 1000; i++)
-                //        list.Add(i);
                 }
 
                 [Test]
