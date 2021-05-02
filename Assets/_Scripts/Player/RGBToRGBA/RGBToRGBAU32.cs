@@ -80,22 +80,23 @@ public static class RGBToRGBAU32
     private static unsafe void V128ForLoop([NoAlias] u8* src, [NoAlias] u32* dst, int count)
     {
         // Input:
-        // u32  0    1    2    3
-        // u16  0 1  2 3  4 5  6 7
-        // u8   0123 4567 8901 2345
-        //      RGBR GBRG BRGB RGBR
-        //
+        // 
+        // 0123 4567 8901 2345
+        // RGBR GBRG BRGB RGBR
         // Output:
-        //      RGBA RGBA RGBA RGBA
+        // RGBA RGBA RGBA RGBA
 
-        var alignedCount = count & ~3;
+        var shuffle = setr_epi8(0, 1, 2, -1, 3, 4, 5, -1, 6, 7, 8, -1, 9, 10, 11, -1);
+        var alpha = set1_epi32(0xFF << 24);
+        
         int i = 0;
+        var alignedCount = count & ~3;
         for (; i < alignedCount; i += 4)
         {
-            var v0 = loadu_si128(src + i * 3);
-            var v1 = shuffle_epi8(v0, setr_epi8(0, 1, 2, -1, 3, 4, 5, -1, 6, 7, 8, -1, 9, 10, 11, -1));
-            var v2 = or_ps(v1, set1_epi32(0xFF << 24));
-            storeu_si128(dst + i, v2);
+            var v0 = loadu_ps(src + i * 3);
+            var v1 = shuffle_epi8(v0, shuffle);
+            var v2 = or_ps(v1, alpha);
+            storeu_ps((dst + i), v2);
         }
 
         for (; i < count; i++)
@@ -103,7 +104,6 @@ public static class RGBToRGBAU32
                      (u32)src[i * 3 + 1] << 8 |
                      (u32)src[i * 3 + 2] << 16 |
                      (u32)0xFF << 24;
-
     }
 
     public static unsafe List<u32> V256ForLoop(List<u8> src)
@@ -120,29 +120,34 @@ public static class RGBToRGBAU32
     [BurstCompile]
     private static unsafe void V256ForLoop([NoAlias] u8* src, [NoAlias] u32* dst, int count)
     {
-        // Input:
-        // u128 0                   1
-        // u64  0         1         2         3
-        // u32  0    1    2    3    4    5    6    7
-        // u16  0 1  2 3  4 5  6 7  8 9  0 1  2 3  4 5
-        // u8   0123 4567 8901 2345 6789 0123 4567 8901
-        //      RGBR GBRG BRGB RGBR GBRG BRGB RGBR GBRG
-        //
-        //      RGBR GBRG BRGB RGBR GBRG BRGB ---- ---- '-' discarded, use the space for A component
-        //      RGBR GBRG BRGB ---- RGBR GBRG BRGB ----
-        // 
-        // Output:
-        //      RGBA RGBA RGBA RGBA RGBA RGBA RGBA RGBA
+        // Input
+        // u128     0                   1
+        // u64      0         1         2         3
+        // u32      0    1    2    3    4    5    6    7
+        // u16      0 1  2 3  4 5  6 7  8 9  0 1  2 3  4 5
+        // u8       0123 4567 8901 2345 6789 0123 4567 8901
+        //          RGBR GBRG BRGB RGBR GBRG BRGB ---- ----
+        // Output
+        //          RGBA RGBA RGBA RGBA RGBA RGBA RBGA RGBA
+        // Path
+        // v0 =     0123 4567 89AB CDEF GHIJ KLMN ---- ----
+        // v1 =     0123 4567 89AB ---- CDEF GHIJ KLMN ----
+        // v2 =     012- 345- 678- 9AB- CDE- FGH- IJK- LMN-
+        // v3 =     012α 345α 678α 9ABα CDEα FGHα IJKα LMNα
 
         var alignedCount = count & ~7;
+        var permute = mm256_setr_epi32(0, 1, 2, 0xFF, 3, 4, 5, 0xFF);
+        var shuffleV128 = setr_epi8(0, 1, 2, -1, 3, 4, 5, -1, 6, 7, 8, -1, 9, 10, 11, -1);
+        var shuffleV256 = mm256_setr_m128(shuffleV128, shuffleV128);
+        var alpha = mm256_set1_epi32(0xFF << 24);
         int i = 0;
         for (; i < alignedCount; i += 8)
         {
-            var v0 = mm256_loadu_si256(src + i * 3);
-            var v1 = mm256_permutevar8x32_epi32(v0, mm256_setr_epi32(0, 1, 2, 0, 3, 4, 5, 0));
-            var v2 = mm256_shuffle_epi8(v1, mm256_setr_epi8(0, 1, 2, 0x80, 3, 4, 5, 0x80, 6, 7, 8, 0x80, 9, 10, 11, 0x80, 0, 1, 2, 0x80, 3, 4, 5, 0x80, 6, 7, 8, 0x80, 9, 10, 11, 0x80));
-            var v3 = mm256_or_ps(v2, mm256_set1_epi32(0xFF << 24));
-            mm256_storeu_si256(dst + i, v3);
+            var v0 = mm256_loadu_ps(src + i * 3);
+            var v1 = mm256_permutevar8x32_epi32(v0, permute);
+            var v2 = mm256_shuffle_epi8(v1, shuffleV256);
+            var v3 = mm256_or_ps(v2, alpha);
+            mm256_storeu_ps(dst + i, v3);
         }
 
         for (; i < count; i++)
@@ -150,7 +155,6 @@ public static class RGBToRGBAU32
                      (u32)src[i * 3 + 1] << 8 |
                      (u32)src[i * 3 + 2] << 16 |
                      (u32)0xFF << 24;
-
     }
 }
 

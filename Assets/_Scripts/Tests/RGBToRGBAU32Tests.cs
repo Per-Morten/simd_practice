@@ -172,6 +172,22 @@ namespace RGBToRGBAU32Tests
                         Assert.IsTrue(result[i] == target);
                     }
                 }
+
+                [Test]
+                public unsafe void ByteRecognizablePattern()
+                {
+                    var pattern = new List<u8>();
+                    for (int i = 0; i < 17 * 3; i++)
+                        pattern.Add((u8)(i));
+
+                    var result = Func(pattern);
+                    for (int i = 0; i < result.Count; i++)
+                    {
+                        var targetColor = new Color32(pattern[i * 3 + 0], pattern[i * 3 + 1], pattern[i * 3 + 2], 0xFF);
+                        var target = *(u32*)&targetColor;
+                        Assert.IsTrue(result[i] == target);
+                    }
+                }
             }
 
             [TestFixture]
