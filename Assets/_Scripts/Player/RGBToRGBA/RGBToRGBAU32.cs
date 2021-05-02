@@ -22,6 +22,8 @@ using Unity.Burst.Intrinsics;
 using System.Runtime.CompilerServices;
 using Unity.Mathematics;
 using Unity.Jobs.LowLevel.Unsafe;
+using static DBG;
+
 using u32 = System.UInt32;
 using u8 = System.Byte;
 

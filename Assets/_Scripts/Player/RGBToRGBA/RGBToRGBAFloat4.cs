@@ -70,61 +70,53 @@ public static class RGBToRGBAFloat4
     [BurstCompile]
     private static unsafe void V128ForLoop([NoAlias] u8* src, [NoAlias] float4* dst, int count)
     {
-        // Input:
-        // u32      0    1    2    3
-        // u16      0 1  2 3  4 5  6 7
-        // u8       0123 4567 8901 2345
-        //          RGBR GBRG BRGB RGBR
-
         var alignedCount = (count / 5) * 5;
         var alpha = set1_epi32(0xFF << 24);
         var _255f = set1_ps(255.0f);
-
         int i = 0;
-        for (; i < alignedCount; i += 5)
+        for (;  i < alignedCount; i += 5)
         {
-            var v0 = loadu_si128(src + i * 3);
-            
-            var v0u8 = v0;
-            var v1u8 = srli_si128(v0, 3);
-            var v2u8 = srli_si128(v0, 6);
-            var v3u8 = srli_si128(v0, 9);
-            var v4u8 = srli_si128(v0, 12);
+            var all = loadu_ps(src + i * 3);
 
-            var v0u8a = or_ps(v0u8, alpha);
-            var v1u8a = or_ps(v1u8, alpha);
-            var v2u8a = or_ps(v2u8, alpha);
-            var v3u8a = or_ps(v3u8, alpha);
-            var v4u8a = or_ps(v4u8, alpha);
+            var v0 = srli_si128(all, 0);
+            var v1 = srli_si128(all, 3);
+            var v2 = srli_si128(all, 6);
+            var v3 = srli_si128(all, 9);
+            var v4 = srli_si128(all, 12);
 
-            var v0u32 = cvtepu8_epi32(v0u8a);
-            var v1u32 = cvtepu8_epi32(v1u8a);
-            var v2u32 = cvtepu8_epi32(v2u8a);
-            var v3u32 = cvtepu8_epi32(v3u8a);
-            var v4u32 = cvtepu8_epi32(v4u8a);
+            v0 = or_ps(v0, alpha);
+            v1 = or_ps(v1, alpha);
+            v2 = or_ps(v2, alpha);
+            v3 = or_ps(v3, alpha);
+            v4 = or_ps(v4, alpha);
 
-            var v0f32 = cvtepi32_ps(v0u32);
-            var v1f32 = cvtepi32_ps(v1u32);
-            var v2f32 = cvtepi32_ps(v2u32);
-            var v3f32 = cvtepi32_ps(v3u32);
-            var v4f32 = cvtepi32_ps(v4u32);
+            v0 = cvtepu8_epi32(v0);
+            v1 = cvtepu8_epi32(v1);
+            v2 = cvtepu8_epi32(v2);
+            v3 = cvtepu8_epi32(v3);
+            v4 = cvtepu8_epi32(v4);
 
-            var v0f32div = div_ps(v0f32, _255f);
-            var v1f32div = div_ps(v1f32, _255f);
-            var v2f32div = div_ps(v2f32, _255f);
-            var v3f32div = div_ps(v3f32, _255f);
-            var v4f32div = div_ps(v4f32, _255f);
+            v0 = cvtepi32_ps(v0);
+            v1 = cvtepi32_ps(v1);
+            v2 = cvtepi32_ps(v2);
+            v3 = cvtepi32_ps(v3);
+            v4 = cvtepi32_ps(v4);
 
-            storeu_ps(dst + i + 0, v0f32div);
-            storeu_ps(dst + i + 1, v1f32div);
-            storeu_ps(dst + i + 2, v2f32div);
-            storeu_ps(dst + i + 3, v3f32div);
-            storeu_ps(dst + i + 4, v4f32div);
+            v0 = div_ps(v0, _255f);
+            v1 = div_ps(v1, _255f);
+            v2 = div_ps(v2, _255f);
+            v3 = div_ps(v3, _255f);
+            v4 = div_ps(v4, _255f);
+
+            storeu_ps(dst + i + 0, v0);
+            storeu_ps(dst + i + 1, v1);
+            storeu_ps(dst + i + 2, v2);
+            storeu_ps(dst + i + 3, v3);
+            storeu_ps(dst + i + 4, v4);
         }
 
         for (; i < count; i++)
-            dst[i] = new float4(src[i * 3 + 0], src[i * 3 + 1], src[i * 3 + 2], 255.0f) / 255.0f;
-
+            dst[i] = new float4(src[i * 3 + 0] / 255.0f, src[i * 3 + 1] / 255.0f, src[i * 3 + 2] / 255.0f, 1.0f);
     }
 
     public static unsafe List<float4> V256ForLoop(List<u8> src)
@@ -142,78 +134,87 @@ public static class RGBToRGBAFloat4
     private static unsafe void V256ForLoop([NoAlias] u8* src, [NoAlias] float4* dst, int count)
     {
         // Input:
-        // u128   0                   1
-        // u64    0         1         2         3
-        // u32    0    1    2    3    4    5    6    7
-        // u16    0 1  2 3  4 5  6 7  8 9  0 1  2 3  4 5 
-        // u8     0123 4567 8901 2345 6789 0123 4567 8901
-        //        RGBR GBRG BRGB RGBR GBRG BRGB RGBR GB--
-        //        0123 4567 89AB CDEF GHIJ KLMN OPQR STUV
+        //  u128    0                   1
+        //  u64     0         1         2         3
+        //  u32     0    1    2    3    4    5    6    7
+        //  u16     0 1  2 3  4 5  6 7  8 9  0 1  2 3  4 5
+        //  u8      0123 4567 8901 2345 6789 0123 4567 8901
+        //          RGBR GBRG BRGB RGBR GBRG BRGB RGBR GBRG 
+        //          0  1   2   3   4  5   6   7   8  9
+        // Registers: 
+        //          0123 4567 89AB CDEF GHIJ KLMN OPQR ST--
+        // v0       0123 45-- ---- ---- ---- ---- ---- ---- << 0, lo
+        // v1       6789 AB-- ---- ---- ---- ---- ---- ---- << 6, lo
+        // v2       CDEF GH-- ---- ---- ---- ---- ---- ---- permute_epi32(3, 4, -1, -1, -1)
+        // v3       IJKL MN-- ---- ---- ---- ---- ---- ---- << 2, hi
+        // v4       OPQR ST-- ---- ---- ---- ---- ---- ---- << 8, hi
         //
-        // 0123 45-- = No operations
-        // 6789 AB-- = Right shift Lo 6
-        // CDEF GH-- = Permutevar, GH travels accross lanes
-        // IJKL MN-- = Right shift Hi 2
-        // OPQR ST-- = Right shift Hi 8
+        // Path each register takes after isolating 8 values we're working on.
+        // 
+        // α = 255
+        //          0123  45--  ----  ----  ----  ----  ----  ----
+        //          0120  3450  ----  ----  ----  ----  ----  ----
+        //          012α  345α  ----  ----  ----  ----  ----  ----
+        //          0     1     2     α     3     4     5     α
+        //          0f    1f    2f    αf    3f    4f    5f    αf
+        //          0f/αf 1f/αf 2f/αf αf/αf 3f/αf 4f/αf 5f/αf αf/αf
+        //          
 
-        var alphaShuffle = mm256_setr_epi8(0x00, 0x01, 0x02, 0xFF, 0x03, 0x04, 0x05, 0xFF,
-                                           0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 
-                                           0x00, 0x01, 0x02, 0xFF, 0x03, 0x04, 0x05, 0xFF, 
-                                           0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF);
+        var shuffleV128 = setr_epi8(0, 1, 2, -1, 3, 4, 5, -1, -1, -1, -1, -1, -1, -1, -1, -1);
+        var shuffleV256 = mm256_setr_m128(shuffleV128, shuffleV128);
+
         var alpha = mm256_set1_epi32(0xFF << 24);
-        var _255f = mm256_set1_ps(255.0f);
-
         var alignedCount = (count / 10) * 10;
+        var _1div255 = mm256_rcp_ps(mm256_set1_ps(255.0f));
         int i = 0;
         for (; i < alignedCount; i += 10)
         {
-            var v0 = mm256_loadu_si256(src + i * 3);
+            var all = mm256_loadu_ps(src + i * 3);
+            var v0 = mm256_srli_si256(all, 0);
+            var v1 = mm256_srli_si256(all, 6);
+            var v2 = mm256_permutevar8x32_epi32(all, mm256_setr_epi32(3, 4, -1, -1, -1, -1, -1, -1));
+            var v3 = mm256_srli_si256(all, 2);
+            var v4 = mm256_srli_si256(all, 8);
 
-            var v0u8 = v0;
-            var v1u8 = mm256_srli_si256(v0, 6);
-            var v2u8 = mm256_permutevar8x32_epi32(v0, mm256_setr_epi32(3, 4, -1, -1, -1, -1, -1, -1));
-            var v3u8 = mm256_srli_si256(v0, 2);
-            var v4u8 = mm256_srli_si256(v0, 8);
+            v0 = mm256_shuffle_epi8(v0, shuffleV256);
+            v1 = mm256_shuffle_epi8(v1, shuffleV256);
+            v2 = mm256_shuffle_epi8(v2, shuffleV256);
+            v3 = mm256_shuffle_epi8(v3, shuffleV256);
+            v4 = mm256_shuffle_epi8(v4, shuffleV256);
 
-            var v0u8a0 = mm256_shuffle_epi8(v0u8, alphaShuffle);
-            var v1u8a0 = mm256_shuffle_epi8(v1u8, alphaShuffle);
-            var v2u8a0 = mm256_shuffle_epi8(v2u8, alphaShuffle);
-            var v3u8a0 = mm256_shuffle_epi8(v3u8, alphaShuffle);
-            var v4u8a0 = mm256_shuffle_epi8(v4u8, alphaShuffle);
+            v0 = mm256_or_ps(v0, alpha);
+            v1 = mm256_or_ps(v1, alpha);
+            v2 = mm256_or_ps(v2, alpha);
+            v3 = mm256_or_ps(v3, alpha);
+            v4 = mm256_or_ps(v4, alpha);
 
-            var v0u8a1 = mm256_or_ps(v0u8a0, alpha);
-            var v1u8a1 = mm256_or_ps(v1u8a0, alpha);
-            var v2u8a1 = mm256_or_ps(v2u8a0, alpha);
-            var v3u8a1 = mm256_or_ps(v3u8a0, alpha);
-            var v4u8a1 = mm256_or_ps(v4u8a0, alpha);
+            v0 = mm256_cvtepu8_epi32(v0.Lo128);
+            v1 = mm256_cvtepu8_epi32(v1.Lo128);
+            v2 = mm256_cvtepu8_epi32(v2.Lo128);
+            v3 = mm256_cvtepu8_epi32(v3.Hi128);
+            v4 = mm256_cvtepu8_epi32(v4.Hi128);
 
-            var v0u32 = mm256_cvtepu8_epi32(v0u8a1.Lo128);
-            var v1u32 = mm256_cvtepu8_epi32(v1u8a1.Lo128);
-            var v2u32 = mm256_cvtepu8_epi32(v2u8a1.Lo128);
-            var v3u32 = mm256_cvtepu8_epi32(v3u8a1.Hi128);
-            var v4u32 = mm256_cvtepu8_epi32(v4u8a1.Hi128);
+            v0 = mm256_cvtepi32_ps(v0);
+            v1 = mm256_cvtepi32_ps(v1);
+            v2 = mm256_cvtepi32_ps(v2);
+            v3 = mm256_cvtepi32_ps(v3);
+            v4 = mm256_cvtepi32_ps(v4);
 
-            var v0f32 = mm256_cvtepi32_ps(v0u32);
-            var v1f32 = mm256_cvtepi32_ps(v1u32);
-            var v2f32 = mm256_cvtepi32_ps(v2u32);
-            var v3f32 = mm256_cvtepi32_ps(v3u32);
-            var v4f32 = mm256_cvtepi32_ps(v4u32);
+            v0 = mm256_mul_ps(v0, _1div255);
+            v1 = mm256_mul_ps(v1, _1div255);
+            v2 = mm256_mul_ps(v2, _1div255);
+            v3 = mm256_mul_ps(v3, _1div255);
+            v4 = mm256_mul_ps(v4, _1div255);
 
-            var v0f32div = mm256_div_ps(v0f32, _255f);
-            var v1f32div = mm256_div_ps(v1f32, _255f);
-            var v2f32div = mm256_div_ps(v2f32, _255f);
-            var v3f32div = mm256_div_ps(v3f32, _255f);
-            var v4f32div = mm256_div_ps(v4f32, _255f);
-
-            mm256_storeu_si256(dst + i + 0, v0f32div);
-            mm256_storeu_si256(dst + i + 2, v1f32div);
-            mm256_storeu_si256(dst + i + 4, v2f32div);
-            mm256_storeu_si256(dst + i + 6, v3f32div);
-            mm256_storeu_si256(dst + i + 8, v4f32div);
+            mm256_storeu_ps(dst + i + 0, v0);
+            mm256_storeu_ps(dst + i + 2, v1);
+            mm256_storeu_ps(dst + i + 4, v2);
+            mm256_storeu_ps(dst + i + 6, v3);
+            mm256_storeu_ps(dst + i + 8, v4);
         }
 
         for (; i < count; i++)
-            dst[i] = new float4(src[i * 3 + 0], src[i * 3 + 1], src[i * 3 + 2], 255.0f) / 255.0f;
+            dst[i] = new float4(src[i * 3 + 0] / 255.0f, src[i * 3 + 1] / 255.0f, src[i * 3 + 2] / 255.0f, 1.0f);
     }
 }
 
