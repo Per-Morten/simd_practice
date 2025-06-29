@@ -4,7 +4,7 @@ using UnityEngine;
 
 class BurstDebuggerStepThroughAttributeRemover
 {
-    [MenuItem("Jobs/Comment out DebuggerStepThrough Attributes in Burst Intrinsics", priority = 1)]
+    [MenuItem("Jobs/Comment out DebuggerStepThrough Attributes in Burst Intrinsics", priority = 200)]
     public static void RemoveDebugStepThrough()
     {
         var info = System.IO.Directory.CreateDirectory($"{Application.dataPath}/../Library/PackageCache/");
