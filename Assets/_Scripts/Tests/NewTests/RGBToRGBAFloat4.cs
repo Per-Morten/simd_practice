@@ -26,7 +26,7 @@ using System.Reflection;
 using System.Linq;
 using Unity.Jobs.LowLevel.Unsafe;
 
-namespace JobRGBToRGBAFloat4Tests
+namespace RGBToRGBAFloat4
 {
     public interface IRGBToRGBAFloat4Job
         : IJob
