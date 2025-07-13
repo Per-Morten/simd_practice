@@ -44,18 +44,7 @@ public static class NoAllocHelpers
     /// <returns>The internal array of the list.</returns>
     public static T[] ExtractArrayFromListT<T>(List<T> list)
     {
-        if (!ExtractArrayFromListTDelegates.TryGetValue(typeof(T), out var obj))
-        {
-            var ass = Assembly.GetAssembly(typeof(Mesh)); // any class in UnityEngine
-            var type = ass.GetType("UnityEngine.NoAllocHelpers");
-            var methodInfo = type.GetMethod("ExtractArrayFromListT", BindingFlags.Static | BindingFlags.Public)
-                .MakeGenericMethod(typeof(T));
-
-            obj = ExtractArrayFromListTDelegates[typeof(T)] = Delegate.CreateDelegate(typeof(Func<List<T>, T[]>), methodInfo);
-        }
-
-        var func = (Func<List<T>, T[]>)obj;
-        return func.Invoke(list);
+        return list.GetUnderlyingArray();
     }
 
     /// <summary>
@@ -66,17 +55,6 @@ public static class NoAllocHelpers
     /// <param name="size">The new length of the <see cref="List{T}"/>.</param>
     public static void ResizeList<T>(List<T> list, int size)
     {
-        if (!ResizeListDelegates.TryGetValue(typeof(T), out var obj))
-        {
-            var ass = Assembly.GetAssembly(typeof(Mesh)); // any class in UnityEngine
-            var type = ass.GetType("UnityEngine.NoAllocHelpers");
-            var methodInfo = type.GetMethod("ResizeList", BindingFlags.Static | BindingFlags.Public)
-                .MakeGenericMethod(typeof(T));
-            obj = ResizeListDelegates[typeof(T)] =
-                Delegate.CreateDelegate(typeof(Action<List<T>, int>), methodInfo);
-        }
-
-        var action = (Action<List<T>, int>)obj;
-        action.Invoke(list, size);
+        list.ResizeNoAlloc(size);
     }
 }
