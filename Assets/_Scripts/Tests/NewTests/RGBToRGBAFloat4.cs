@@ -1,8 +1,20 @@
+using System;
+using System.Linq;
+using System.Reflection;
+using System.Runtime.CompilerServices;
+
 using NUnit.Framework;
-using Unity.Burst;
-using Unity.Collections;
-using Unity.Mathematics;
+
 using UnityEngine;
+
+using Unity.Burst;
+using Unity.Burst.Intrinsics;
+using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
+using Unity.PerformanceTesting;
+using Unity.Mathematics;
+using Unity.Jobs;
+using Unity.Jobs.LowLevel.Unsafe;
 
 using static Unity.Burst.Intrinsics.X86;
 using static Unity.Burst.Intrinsics.X86.Sse;
@@ -16,19 +28,10 @@ using static Unity.Burst.Intrinsics.X86.Avx;
 using static Unity.Burst.Intrinsics.X86.Avx2;
 using static Unity.Burst.Intrinsics.X86.Fma;
 using static Unity.Burst.Intrinsics.X86.F16C;
-using Unity.Burst.Intrinsics;
-using Unity.Collections.LowLevel.Unsafe;
-using Unity.PerformanceTesting;
-using System;
-using System.Runtime.CompilerServices;
-using Unity.Jobs;
-using System.Reflection;
-using System.Linq;
-using Unity.Jobs.LowLevel.Unsafe;
 
 namespace RGBToRGBAFloat4
 {
-    public interface IRGBToRGBAFloat4Job
+    public interface IJobImplementation
         : IJob
     {
         public NativeArray<byte> src { get; set; }
@@ -36,7 +39,7 @@ namespace RGBToRGBAFloat4
     }
 
     public abstract class Tests<TJobImplementation>
-        where TJobImplementation : struct, IRGBToRGBAFloat4Job
+        where TJobImplementation : struct, IJobImplementation
     {
         public const int ColorsNeededForVerifyingAllPaths = 11;
 
@@ -177,7 +180,7 @@ namespace RGBToRGBAFloat4
     public class _PerformanceTests
     {
         [MethodImpl]
-        public static void Time<TJobImplementation>(NativeArray<byte> src, NativeArray<float4> dst) where TJobImplementation : struct, IRGBToRGBAFloat4Job
+        public static void Time<TJobImplementation>(NativeArray<byte> src, NativeArray<float4> dst) where TJobImplementation : struct, IJobImplementation
         {
             TestUtility.Time($"{typeof(TJobImplementation).Name} ({src.Length / 3})", () => { new TJobImplementation { src = src, dst = dst }.Run(); });
         }
@@ -194,6 +197,7 @@ namespace RGBToRGBAFloat4
                 () => { Time<V256Implementation10xV0>(src, dst); },
                 () => { Time<V256Implementation10xV1>(src, dst); },
                 () => { Time<V256Implementation10xV2>(src, dst); },
+                () => { Time<V256Implementation10xV3>(src, dst); },
                 () => { Time<V256Implementation8xV0>(src, dst); },
                 () => { Time<V256Implementation8xV1>(src, dst); },
             };
@@ -217,7 +221,7 @@ namespace RGBToRGBAFloat4
 
     [BurstCompile]
     public struct BaseImplementation
-        : IRGBToRGBAFloat4Job
+        : IJobImplementation
     {
         public class Tests : Tests<BaseImplementation> { }
 
@@ -239,7 +243,7 @@ namespace RGBToRGBAFloat4
 
     [BurstCompile]
     public struct V128Implementation5xV0
-        : IRGBToRGBAFloat4Job
+        : IJobImplementation
     {
         public class Tests : Tests<V128Implementation5xV0> { }
 
@@ -249,8 +253,8 @@ namespace RGBToRGBAFloat4
         public void Execute()
         {
             var count = src.Length / 3;
-            var aligned_byte_count = src.Length / 16;
-            var aligned_count = aligned_byte_count * 5;
+            var aligned_byte_count = ((src.Length - 1) / 15) * 15;
+            var aligned_count = aligned_byte_count / 3;
 
             var _1_div_255 = set1_ps(1 / 255.0f);
 
@@ -305,7 +309,7 @@ namespace RGBToRGBAFloat4
 
     [BurstCompile]
     public struct V128Implementation5xV1
-        : IRGBToRGBAFloat4Job
+        : IJobImplementation
     {
         public class Tests : Tests<V128Implementation5xV1> { }
 
@@ -315,8 +319,8 @@ namespace RGBToRGBAFloat4
         public void Execute()
         {
             var count = src.Length / 3;
-            var aligned_byte_count = src.Length / 16;
-            var aligned_count = aligned_byte_count * 5;
+            var aligned_byte_count = ((src.Length - 1) / 15) * 15;
+            var aligned_count = aligned_byte_count / 3;
 
             var _1_div_255 = set1_ps(1 / 255.0f);
 
@@ -382,7 +386,7 @@ namespace RGBToRGBAFloat4
 
     [BurstCompile]
     public struct V128Implementation5xV2
-        : IRGBToRGBAFloat4Job
+        : IJobImplementation
     {
         public class Tests : Tests<V128Implementation5xV2> { }
 
@@ -392,8 +396,8 @@ namespace RGBToRGBAFloat4
         public void Execute()
         {
             var count = src.Length / 3;
-            var aligned_byte_count = src.Length / 16;
-            var aligned_count = aligned_byte_count * 5;
+            var aligned_byte_count = ((src.Length - 1) / 15) * 15;
+            var aligned_count = aligned_byte_count / 3;
 
             var _1_div_255 = set1_ps(1 / 255.0f);
 
@@ -458,7 +462,7 @@ namespace RGBToRGBAFloat4
 
     [BurstCompile]
     public struct V256Implementation10xV0
-        : IRGBToRGBAFloat4Job
+        : IJobImplementation
     {
         public class Tests : Tests<V256Implementation10xV0> { }
 
@@ -499,8 +503,8 @@ namespace RGBToRGBAFloat4
             var shuffle_v128 = setr_epi8(0, 1, 2, -1, 3, 4, 5, -1, -1, -1, -1, -1, -1, -1, -1, -1);
             var shuffle_v256 = mm256_setr_m128(shuffle_v128, shuffle_v128);
 
-            var aligned_byte_count = src.Length / 32;
-            var aligned_count = aligned_byte_count * 10;
+            var aligned_byte_count = ((src.Length - 2) / 30) * 30;
+            var aligned_count = aligned_byte_count / 3;
 
             var alpha = mm256_set1_epi32(0xFF << 24);
             var _1_div_255 = mm256_set1_ps(1 / 255.0f);
@@ -559,7 +563,7 @@ namespace RGBToRGBAFloat4
 
     [BurstCompile]
     public struct V256Implementation10xV1
-        : IRGBToRGBAFloat4Job
+        : IJobImplementation
     {
         public class Tests : Tests<V256Implementation10xV1> { }
 
@@ -600,8 +604,8 @@ namespace RGBToRGBAFloat4
             var shuffle_v128 = setr_epi8(0, 1, 2, -1, 3, 4, 5, -1, -1, -1, -1, -1, -1, -1, -1, -1);
             var shuffle_v256 = mm256_setr_m128(shuffle_v128, shuffle_v128);
 
-            var aligned_byte_count = src.Length / 32;
-            var aligned_count = aligned_byte_count * 10;
+            var aligned_byte_count = ((src.Length - 2) / 30) * 30;
+            var aligned_count = aligned_byte_count / 3;
 
             var _1_div_255 = mm256_set1_ps(1 / 255.0f);
 
@@ -693,7 +697,7 @@ namespace RGBToRGBAFloat4
 
     [BurstCompile]
     public struct V256Implementation10xV2
-        : IRGBToRGBAFloat4Job
+        : IJobImplementation
     {
         public class Tests : Tests<V256Implementation10xV2> { }
 
@@ -737,8 +741,153 @@ namespace RGBToRGBAFloat4
             //          
 
             var count = src.Length / 3;
-            var aligned_byte_count = src.Length / 32;
-            var aligned_count = aligned_byte_count * 10;
+            var aligned_byte_count = ((src.Length - 2) / 30) * 30;
+            var aligned_count = aligned_byte_count / 3;
+
+            var _1_div_255 = mm256_set1_ps(1 / 255.0f);
+
+            // 8388608.0f == 0x4b000000. At this value f32 doesn't have any
+            // decimal precision anymore. Going to or with it so I can bake the
+            // i32->f32 conversion into the fmadd.
+            //
+            // Note: Not OR'ing with this value on alpha channel. It will remain
+            // zero and have "1" added to it in the fmadd.
+            var bias = 8388608.0f;
+            var i32_to_f32_biased = mm256_setr_ps(bias,
+                                                  bias,
+                                                  bias,
+                                                  0.0f,
+                                                  bias,
+                                                  bias,
+                                                  bias,
+                                                  0.0f);
+
+            // Need to remove the bias we introduced as part of int to float conversion
+            var bias_ratio = -(bias / 255.0f);
+            var f32_biased_to_f32_normalized = mm256_setr_ps(bias_ratio,
+                                                             bias_ratio,
+                                                             bias_ratio,
+                                                             1.0f,
+                                                             bias_ratio,
+                                                             bias_ratio,
+                                                             bias_ratio,
+                                                             1.0f);
+
+            int i = 0;
+            for (; i < aligned_count; i += 10)
+            {
+                var all = src.ReinterpretLoad<v256>(i * 3);
+
+                // Shuffles RGBRGB to RGB0RGB0 for RGB values 0, 1, and 6, 7.
+                var s0 = mm256_shuffle_epi8(all, mm256_setr_epi8(0, 1, 2, 0xFF,
+                                                                 3, 4, 5, 0xFF,
+                                                                 0xFF, 0xFF, 0xFF, 0xFF,
+                                                                 0xFF, 0xFF, 0xFF, 0xFF,
+                                                                 2, 3, 4, 0xFF,
+                                                                 5, 6, 7, 0xFF,
+                                                                 0xFF, 0xFF, 0xFF, 0xFF,
+                                                                 0xFF, 0xFF, 0xFF, 0xFF));
+
+                // Shuffles RGBRGB to RGB0RGB0 for RGB values 2, 3, and 8, 9.
+                var s1 = mm256_shuffle_epi8(all, mm256_setr_epi8(6, 7, 8, 0xFF,
+                                                                 9, 10, 11, 0xFF,
+                                                                 0xFF, 0xFF, 0xFF, 0xFF,
+                                                                 0xFF, 0xFF, 0xFF, 0xFF,
+                                                                 8, 9, 10, 0xFF,
+                                                                 11, 12, 13, 0xFF,
+                                                                 0xFF, 0xFF, 0xFF, 0xFF,
+                                                                 0xFF, 0xFF, 0xFF, 0xFF));
+
+                // Creates RGBRGB for values 4, 5. Need to do this differently because 5 straddles the 128-bit boundary.
+                var s2 = alignr_epi8(all.Lo128, all.Hi128, 12);
+
+                // Shuffles RGBRGB to RGB0RGB0 for RGB values 4, 5.
+                s2 = shuffle_epi8(s2, setr_epi8(0, 1, 2, -1, 3, 4, 5, -1, -1, -1, -1, -1, -1, -1, -1, -1));
+
+                // Convert to 32-bit representation
+                var v0 = mm256_cvtepu8_epi32(s0.Lo128);
+                var v1 = mm256_cvtepu8_epi32(s1.Lo128);
+                var v2 = mm256_cvtepu8_epi32(s2);
+                var v3 = mm256_cvtepu8_epi32(s0.Hi128);
+                var v4 = mm256_cvtepu8_epi32(s1.Hi128);
+
+                // OR'ing takes us to the biased f32 range without decimal precision 
+                v0 = mm256_or_ps(v0, i32_to_f32_biased);
+                v1 = mm256_or_ps(v1, i32_to_f32_biased);
+                v2 = mm256_or_ps(v2, i32_to_f32_biased);
+                v3 = mm256_or_ps(v3, i32_to_f32_biased);
+                v4 = mm256_or_ps(v4, i32_to_f32_biased);
+
+                // Divide by 255.0f to get us in normalized RGB range, then
+                // subtract (8388608.0f / 255.0f) to remove the bias we added to
+                // do int to float conversion. Alpha lane just gets the value 1
+                // added because it's 0 after the initial shuffling. 
+                v0 = mm256_fmadd_ps(v0, _1_div_255, f32_biased_to_f32_normalized);
+                v1 = mm256_fmadd_ps(v1, _1_div_255, f32_biased_to_f32_normalized);
+                v2 = mm256_fmadd_ps(v2, _1_div_255, f32_biased_to_f32_normalized);
+                v3 = mm256_fmadd_ps(v3, _1_div_255, f32_biased_to_f32_normalized);
+                v4 = mm256_fmadd_ps(v4, _1_div_255, f32_biased_to_f32_normalized);
+
+                dst.ReinterpretStore(i + 0, v0);
+                dst.ReinterpretStore(i + 2, v1);
+                dst.ReinterpretStore(i + 4, v2);
+                dst.ReinterpretStore(i + 6, v3);
+                dst.ReinterpretStore(i + 8, v4);
+            }
+
+            for (; i < count; i++)
+                dst.AsRef(i) = new float4(src[i * 3 + 0], src[i * 3 + 1], src[i * 3 + 2], 255.0f) / 255.0f;
+        }
+    }
+
+    [BurstCompile]
+    public struct V256Implementation10xV3
+        : IJobImplementation
+    {
+        public class Tests : Tests<V256Implementation10xV3> { }
+
+        public NativeArray<byte> src { get; set; }
+        public NativeArray<float4> dst { get; set; }
+
+        public void Execute()
+        {
+            // Input:
+            //  u128    0                   1
+            //  u64     0         1         2         3
+            //  u32     0    1    2    3    4    5    6    7
+            //  u16     0 1  2 3  4 5  6 7  8 9  0 1  2 3  4 5
+            //  u8      0123 4567 8901 2345 6789 0123 4567 8901
+            //          RGBR GBRG BRGB RGBR GBRG BRGB RGBR GBRG 
+            //          0  1   2   3   4  5   6   7   8  9
+            //
+            // Registers: 
+            //          0123 4567 89AB CDEF GHIJ KLMN OPQR ST--
+            // s0       012- 345- ---- ---- IJK- LMN- ---- ---- shuffle
+            // s1       678- 9AB- ---- ---- OPQ- RST- ---- ---- shuffle
+            // s2       CDEF GH-- ---- ---- ---- ---- ---- ---- alignr
+            // s2       CDE- FGH- ---- ---- ---- ---- ---- ---- shuffle
+            //
+            //          0123 4567 89AB CDEF GHIJ KLMN OPQR ST--
+            // v0       012- 345- ---- ---- ---- ---- ---- ---- 
+            // v1       678- 9AB- ---- ---- ---- ---- ---- ---- 
+            // v2       CDE- FGH- ---- ---- ---- ---- ---- ---- 
+            // v3       IJK- LMN- ---- ---- ---- ---- ---- ---- 
+            // v4       OPQ- RST- ---- ---- ---- ---- ---- ---- 
+            //
+            // Path each register takes after isolating 8 values we're working on.
+            // 
+            // α = 255
+            //          012-  345-  ----  ----  ----  ----  ----  ----
+            //          0120  3450  ----  ----  ----  ----  ----  ----
+            //          012α  345α  ----  ----  ----  ----  ----  ----
+            //          0     1     2     α     3     4     5     α
+            //          0f    1f    2f    αf    3f    4f    5f    αf
+            //          0f/αf 1f/αf 2f/αf αf/αf 3f/αf 4f/αf 5f/αf αf/αf
+            //          
+
+            var count = src.Length / 3;
+            var aligned_byte_count = ((src.Length - 2) / 30) * 30;
+            var aligned_count = aligned_byte_count / 3;
 
             var _1_div_255 = mm256_set1_ps(1 / 255.0f);
 
@@ -838,7 +987,7 @@ namespace RGBToRGBAFloat4
 
     [BurstCompile]
     public struct V256Implementation8xV0
-        : IRGBToRGBAFloat4Job
+        : IJobImplementation
     {
         public class Tests : Tests<V256Implementation8xV0> { }
 
@@ -876,8 +1025,8 @@ namespace RGBToRGBAFloat4
             // But might be that there are shortcuts that could be taken to avoid more?
 
             var count = src.Length / 3;
-            var aligned_byte_count = src.Length / 32;
-            var aligned_count = aligned_byte_count * 8;
+            var aligned_byte_count = ((src.Length - 8) / 24) * 24;
+            var aligned_count = aligned_byte_count / 3;
 
             var alpha = mm256_set1_ps(1.0f);
 
@@ -961,7 +1110,7 @@ namespace RGBToRGBAFloat4
 
     [BurstCompile]
     public struct V256Implementation8xV1
-        : IRGBToRGBAFloat4Job
+        : IJobImplementation
     {
         public class Tests : Tests<V256Implementation8xV1> { }
 
@@ -977,7 +1126,7 @@ namespace RGBToRGBAFloat4
             //  u16     0 1  2 3  4 5  6 7  8 9  0 1  2 3  4 5
             //  u8      0123 4567 8901 2345 6789 0123 4567 8901
             //          RGBR GBRG BRGB RGBR GBRG BRGB RGBR GBRG 
-            //          0  1   2   3   4  5   6   7   8  9
+            //          0  1   2   3   4  5   6   7   8  9   0
             //
             // Registers: 
             // 
@@ -986,10 +1135,9 @@ namespace RGBToRGBAFloat4
             //          0123 4567 89AB CDEF GHIJ KLMN ---- ----
             // all      0123 4567 89AB ---- CDEF GHIJ KLMN ---- permute
 
-
             var count = src.Length / 3;
-            var aligned_byte_count = src.Length / 32;
-            var aligned_count = aligned_byte_count * 8;
+            var aligned_byte_count = ((src.Length - 8) / 24) * 24;
+            var aligned_count = aligned_byte_count / 3;
 
             var bias = 8388608.0f;
             var i32_to_f32_biased = mm256_set1_ps(bias);
